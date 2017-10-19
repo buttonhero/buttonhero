@@ -1,73 +1,56 @@
-//We always have to include the library
-#include "LedControl.h"
+//www.elegoo.com
+//2016.12.12
 
-/*
- Now we need a LedControl to work with.
- ***** These pin numbers will probably not work with your hardware *****
- pin 12 is connected to the DataIn 
- pin 11 is connected to the CLK 
- pin 10 is connected to LOAD 
- We have only a single MAX72XX.
- */
-LedControl lc=LedControl(12,11,10,1);
+int latch=9;  //74HC595  pin 9 STCP
+int clock=10; //74HC595  pin 10 SHCP
+int data=8;   //74HC595  pin 8 DS
 
-/* we always wait a bit between updates of the display */
-unsigned long delaytime=250;
+unsigned char table[]=
+{0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f,0x77,0x7c
+,0x39,0x5e,0x79,0x71,0x00};
 
 void setup() {
-  /*
-   The MAX72XX is in power-saving mode on startup,
-   we have to do a wakeup call
-   */
-  lc.shutdown(0,false);
-  /* Set the brightness to a medium values */
-  lc.setIntensity(0,8);
-  /* and clear the display */
-  lc.clearDisplay(0);
+  pinMode(latch,OUTPUT);
+  pinMode(clock,OUTPUT);
+  pinMode(data,OUTPUT);
 }
+void Display(unsigned char num)
+{
 
-
-/*
- This method will display the characters for the
- word "Arduino" one after the other on digit 0. 
- */
-void writeArduinoOn7Segment() {
-  lc.setChar(0,0,'a',false);
-  delay(delaytime);
-  lc.setRow(0,0,0x05);
-  delay(delaytime);
-  lc.setChar(0,0,'d',false);
-  delay(delaytime);
-  lc.setRow(0,0,0x1c);
-  delay(delaytime);
-  lc.setRow(0,0,B00010000);
-  delay(delaytime);
-  lc.setRow(0,0,0x15);
-  delay(delaytime);
-  lc.setRow(0,0,0x1D);
-  delay(delaytime);
-  lc.clearDisplay(0);
-  delay(delaytime);
-} 
-
-/*
-  This method will scroll all the hexa-decimal
- numbers and letters on the display. You will need at least
- four 7-Segment digits. otherwise it won't really look that good.
- */
-void scrollDigits() {
-  for(int i=0;i<13;i++) {
-    lc.setDigit(0,3,i,false);
-    lc.setDigit(0,2,i+1,false);
-    lc.setDigit(0,1,i+2,false);
-    lc.setDigit(0,0,i+3,false);
-    delay(delaytime);
-  }
-  lc.clearDisplay(0);
-  delay(delaytime);
+  digitalWrite(latch,LOW);
+  shiftOut(data,clock,MSBFIRST,table[num]);
+  digitalWrite(latch,HIGH);
+  
 }
-
-void loop() { 
-  writeArduinoOn7Segment();
-  scrollDigits();
+void loop() {
+  Display(1);
+  delay(500);
+  Display(2);
+  delay(500);
+  Display(3);
+  delay(500);
+  Display(4);
+  delay(500);
+  Display(5);
+  delay(500);
+  Display(6);
+  delay(500);
+  Display(7);
+  delay(500);
+  Display(8);
+  delay(500);
+  Display(9);
+  delay(500);
+  Display(10);
+  delay(500);
+  Display(11);
+  delay(500);
+  Display(12);
+  delay(500);
+  Display(13);
+  delay(500);
+  Display(14);
+  delay(500);
+  Display(15);
+  delay(500);
 }
