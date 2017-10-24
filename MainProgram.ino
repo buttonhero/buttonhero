@@ -1,6 +1,4 @@
-#include <Servo.h>
-#include <SPI.h>
-// 
+#include <SPI.h> 
 
 /* Wiring Guide */
 //Serial MP3 Player A     |  PINS//
@@ -61,32 +59,33 @@ static int8_t Send_buf[6] = {0} ;
 void sendCommand(int8_t command, int16_t dat );
 
 //LiquidCrystal lcd(8);
-const unsigned short int latch = 12;
-const unsigned short int data = 11;
-const unsigned short int clck = 10;
+#define LATCH 12
+#define DATA 11
+#define CLCK 10
 
-const unsigned short int green = 1;
-const unsigned short int yellow = 2;
-const unsigned short int blue = 4;
-const unsigned short int red = 8;
-const unsigned short int white = 16;
-const unsigned short int verySlow = 500;
-const unsigned short int slow = 400;
-const unsigned short int medium = 300;
-const unsigned short int fast = 200;
-const unsigned short int veryFast = 100;
-const unsigned short int blazing = 50;
-unsigned short int arraySize = 8;
+
+#define GREEN 1
+#define YELLOW 2
+#define BLUE 4
+#define RED 8
+#define WHITE 16
+#define VERYSLOW 500
+#define SLOW 400
+#define MEDIUM 300
+#define FAST 200
+#define VERYFAST 100
+#define BLAZING 50
+#define ARRAYSIZE 8
 //
-const unsigned short int songArray[8][2] = {{green,veryFast},{yellow,veryFast},{red,fast},{yellow,fast},{red,veryFast},{blue,veryFast},{white,veryFast},{green,veryFast}};
+const unsigned short int songArray[8][2] = {{GREEN,VERYFAST},{YELLOW,VERYFAST},{RED,FAST},{YELLOW,FAST},{RED,VERYFAST},{BLUE,VERYFAST},{WHITE,VERYFAST},{GREEN,VERYFAST}};
 void setup() 
 {
   //leds
-  pinMode(latch,OUTPUT);
-  pinMode(clck, OUTPUT);
-  pinMode(data, OUTPUT);  
-  digitalWrite(data, 0);
-  digitalWrite(clck, 0);
+  pinMode(LATCH,OUTPUT);
+  pinMode(CLCK, OUTPUT);
+  pinMode(DATA, OUTPUT);  
+  digitalWrite(DATA, 0);
+  digitalWrite(CLCK, 0);
   
   //joystick
   pinMode(SW_PIN, INPUT_PULLUP);
@@ -102,16 +101,16 @@ void setup()
 
     
 }
-int gameState = 1; //1 = intro 2 = game 3 = finish 0 = select
+unsigned char gameState = 1; //1 = intro 2 = game 3 = finish 0 = select
 
-int currSong = 1;
+unsigned char currSong = 1;
 void loop() 
 {
   switch(gameState){
     case 1: //intro
-      digitalWrite(latch,LOW);
-      shiftOut(data, clck, MSBFIRST, B11111111);
-      digitalWrite(latch,HIGH);
+      digitalWrite(LATCH,LOW);
+      shiftOut(DATA, CLCK, MSBFIRST, B11111111);
+      digitalWrite(LATCH,HIGH);
       
       if(digitalRead(SW_PIN) == LOW){
         sendCommand(CMD_PLAY_FILE_NAME,0X022C);
@@ -120,11 +119,12 @@ void loop()
         delay(500);
         sendCommand(CMD_PLAY_FILE_NAME,0X0101);
         gameState = 0;
+      
         delay(1000); 
       }
     break;  
     case 0: //select a song
-      if(analogRead(X_PIN) > 800){
+      if(analogRead(X_PIN) > 900){
         
         if(currSong < SONGS)
         {
@@ -145,7 +145,7 @@ void loop()
         delay(1000);
   
       }
-      if(analogRead(X_PIN) < 200){
+       if(analogRead(X_PIN) < 100 && analogRead(X_PIN) != 0 ){
         if(currSong > 1)
         {
         currSong--;
@@ -163,7 +163,7 @@ void loop()
         
         }
       delay(1000);
-      }
+      } 
         if(digitalRead(SW_PIN) == LOW){
             sendCommand(CMD_PLAY_FILE_NAME,0X022B);
             gameState = 2;
@@ -179,10 +179,10 @@ void loop()
             sendCommand(CMD_PLAY_FILE_NAME,0X0203);
             delay(500);
             sendCommand(CMD_PLAY_FILE_NAME,0X0100 + currSong);        
-        }
+        } 
       break;
       case 2: //game
-        for(int i = 0; i < arraySize; i++){
+        for(unsigned char i = 0; i < ARRAYSIZE; i++){
           colorRow(songArray[i][0],songArray[i][1]);
           if(digitalRead(SW_PIN) == LOW){
               mp3Basic(CMD_PAUSE);
@@ -197,14 +197,14 @@ void loop()
     //default:
         //nothing    
   }
-    if(analogRead(Y_PIN) > 800){
+    if(analogRead(Y_PIN) > 900){
         mp3Basic(CMD_VOLUME_UP);
-        delay(100);
-      }
-    if(analogRead(Y_PIN) < 200){
+       delay(100);
+    }
+    if(analogRead(Y_PIN) < 100 && analogRead(Y_PIN) != 0){
         mp3Basic(CMD_VOLUME_DOWN);
         delay(100);
-      } 
+    } 
 }
 
 
@@ -216,8 +216,6 @@ void intro()
   //sendCommand(CMD_SET_VOLUME,0x0F);
   sendCommand(CMD_PLAY_FILE_NAME,0X0229);
   delay(2000);
-  setVolume(0X0F);
-  delay(200);
   sendCommand(CMD_PLAY_FILE_NAME,0X022A);
   delay(200);
   cyclePlay(0X022A);
@@ -320,13 +318,11 @@ void sendBytes(uint8_t nbytes)
 }
 
 void colorRow(unsigned short int colorSeq, unsigned short int delayValue){
-  for(int i = 0; i < 5; i++){
-    digitalWrite(latch,LOW);
-    shiftOut(data, clck, MSBFIRST, colorSeq);
-    digitalWrite(latch,HIGH);
+  for(unsigned char i = 0; i < 5; i++){
+    digitalWrite(LATCH,LOW);
+    shiftOut(DATA, CLCK, MSBFIRST, colorSeq);
+    digitalWrite(LATCH,HIGH);
     delay(delayValue);
     
   }
 }
-
-
