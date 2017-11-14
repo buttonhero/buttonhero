@@ -83,9 +83,105 @@ void setup()
   //leds
   pinMode(LATCH,OUTPUT);
   pinMode(CLCK, OUTPUT);
+#include <SPI.h> 
+/* Wiring Guide */
+//Serial MP3 Player A     |  PINS//
+//              RX              |   7
+//              TX              |   8
+//              VCC            |   5V
+//              GND            |   GND
+//JoyStick
+//      
+#include <SoftwareSerial.h>
+
+#define ARDUINO_RX 9//should connect to TX of the Serial MP3 Player module
+#define ARDUINO_TX 8//connect to RX of the module
+SoftwareSerial myMP3(ARDUINO_RX, ARDUINO_TX);
+
+static int8_t Send_buf[6] = {0} ;
+/************Command byte**************************/
+/*basic commands*/
+#define CMD_PLAY  0X01
+#define CMD_PAUSE 0X02
+#define CMD_NEXT_SONG 0X03
+#define CMD_PREV_SONG 0X04
+#define CMD_VOLUME_UP   0X05
+#define CMD_VOLUME_DOWN 0X06
+#define CMD_FORWARD 0X0A // >>
+#define CMD_REWIND  0X0B // <<
+#define CMD_STOP 0X0E
+#define CMD_STOP_INJECT 0X0F//stop interruptting with a song, just stop the interlude
+
+/*5 bytes commands*/
+#define CMD_SEL_DEV 0X35
+#define DEV_TF 0X01
+#define CMD_IC_MODE 0X35
+#define CMD_SLEEP   0X03
+#define CMD_WAKE_UP 0X02
+#define CMD_RESET   0X05
+
+/*6 bytes commands*/  
+#define CMD_PLAY_W_INDEX   0X41
+#define CMD_PLAY_FILE_NAME 0X42
+#define CMD_INJECT_W_INDEX 0X43
+
+/*Special commands*/
+#define CMD_SET_VOLUME 0X31
+#define CMD_PLAY_W_VOL 0X31
+
+#define CMD_SET_PLAY_MODE 0X33
+#define ALL_CYCLE 0X00
+#define SINGLE_CYCLE 0X01
+
+#define CMD_PLAY_COMBINE 0X45//can play combination up to 15 songs
+
+#define SW_PIN A0 // digital pin connected to switch output
+#define X_PIN 1 // analog pin connected to X output
+#define Y_PIN 2 // analog pin connected to Y output
+
+#define SONGS 5 //number of songs
+void sendCommand(int8_t command, int16_t dat );
+
+//LiquidCrystal lcd(8);
+#define LATCH 12
+#define DATA 11
+#define CLCK 10
+
+#define YB 3 //yellow button
+#define BB 4 //blue button
+#define RB A3 //red button
+#define WB A4 //white button
+#define GB A5 //green button 
+
+#define GREEN 1
+#define YELLOW 2
+#define BLUE 4
+#define RED 8
+#define WHITE 16
+#define VERYSLOW 500
+#define SLOW 400
+#define MEDIUM 300
+#define FAST 200
+#define VERYFAST 100
+#define BLAZING 50
+#define ARRAYSIZE 8
+//
+const unsigned short int songArray[ARRAYSIZE][2] = {{GREEN,VERYFAST},{YELLOW,VERYFAST},{RED,FAST},{YELLOW,FAST},{RED,VERYFAST},{BLUE,VERYFAST},{WHITE,VERYFAST},{GREEN,VERYFAST}};
+void setup() 
+{
+  //leds
+  pinMode(LATCH,OUTPUT);
+  pinMode(CLCK, OUTPUT);
   pinMode(DATA, OUTPUT);  
   digitalWrite(DATA, 0);
   digitalWrite(CLCK, 0);
+
+  //buttons 
+  pinMode(GB, INPUT_PULLUP);  
+  pinMode(YB, INPUT_PULLUP);
+  pinMode(BB, INPUT_PULLUP);  
+  pinMode(RB, INPUT_PULLUP);
+  pinMode(WB, INPUT_PULLUP);
   
   //joystick
   pinMode(SW_PIN, INPUT_PULLUP);
@@ -106,6 +202,24 @@ unsigned char gameState = 1; //1 = intro 2 = game 3 = finish 0 = select
 unsigned char currSong = 1;
 void loop() 
 {
+  /*
+  Serial.print("Blue Button:  ");
+  Serial.print(digitalRead(BB));
+  Serial.print("\n");
+    Serial.print("Blue Button:  ");
+  Serial.print(digitalRead(WB));
+  Serial.print("\n");
+    Serial.print("Blue Button:  ");
+  Serial.print(digitalRead(RB));
+  Serial.print("\n");
+    Serial.print("Blue Button:  ");
+  Serial.print(digitalRead(GB));
+  Serial.print("\n");
+    Serial.print("Blue Button:  ");
+  Serial.print(digitalRead(YELLB));
+  Serial.print("\n");
+*/
+  delay(100);
   switch(gameState){
     case 1: //intro
       digitalWrite(LATCH,LOW);
@@ -120,11 +234,29 @@ void loop()
         sendCommand(CMD_PLAY_FILE_NAME,0X0101);
         gameState = 0;
       
-        delay(1000); 
+        
       }
     break;  
     case 0: //select a song
-      if(analogRead(X_PIN) > 900){
+      if (digitalRead(SW_PIN) == LOW){
+        delay(1000);
+        if(digitalRead(SW_PIN) == LOW){
+            sendCommand(CMD_PLAY_FILE_NAME,0X022B);
+            gameState = 2;
+            delay(2000);
+            sendCommand(CMD_PLAY_FILE_NAME,0X0207);
+            delay(500);
+            sendCommand(CMD_PLAY_FILE_NAME,0X0206); 
+            delay(500);
+            sendCommand(CMD_PLAY_FILE_NAME,0X0205);
+            delay(500); 
+            sendCommand(CMD_PLAY_FILE_NAME,0X0204);
+            delay(600); 
+            sendCommand(CMD_PLAY_FILE_NAME,0X0203);
+            delay(500);
+            sendCommand(CMD_PLAY_FILE_NAME,0X0100 + currSong);        
+        }
+      else if(analogRead(X_PIN) > 900 || digitalRead(SW_PIN) == HIGH){
         
         if(currSong < SONGS)
         {
@@ -142,10 +274,11 @@ void loop()
           sendCommand(CMD_PLAY_FILE_NAME,0X0100 + currSong);
             
         }
-        delay(1000);
+        
   
       }
-       if(analogRead(X_PIN) < 100 && analogRead(X_PIN) != 0 ){
+      }
+     if(analogRead(X_PIN) < 100 ){
         if(currSong > 1)
         {
         currSong--;
@@ -162,24 +295,10 @@ void loop()
         sendCommand(CMD_PLAY_FILE_NAME,0X0100 + currSong);
         
         }
-      delay(1000);
-      } 
-        if(digitalRead(SW_PIN) == LOW){
-            sendCommand(CMD_PLAY_FILE_NAME,0X022B);
-            gameState = 2;
-            delay(2000);
-            sendCommand(CMD_PLAY_FILE_NAME,0X0207);
-            delay(500);
-            sendCommand(CMD_PLAY_FILE_NAME,0X0206); 
-            delay(500);
-            sendCommand(CMD_PLAY_FILE_NAME,0X0205);
-            delay(500); 
-            sendCommand(CMD_PLAY_FILE_NAME,0X0204);
-            delay(600); 
-            sendCommand(CMD_PLAY_FILE_NAME,0X0203);
-            delay(500);
-            sendCommand(CMD_PLAY_FILE_NAME,0X0100 + currSong);        
-        } 
+       
+      }
+       
+         
       break;
       case 2: //game
         for(unsigned char i = 0; i < ARRAYSIZE; i++){
@@ -201,7 +320,7 @@ void loop()
         mp3Basic(CMD_VOLUME_UP);
        delay(100);
     }
-    if(analogRead(Y_PIN) < 100 && analogRead(Y_PIN) != 0){
+    if(analogRead(Y_PIN) < 100){
         mp3Basic(CMD_VOLUME_DOWN);
         delay(100);
     } 
@@ -213,7 +332,7 @@ void intro()
   
   setVolume(0X0F);
   delay(200);
-  //sendCommand(CMD_SET_VOLUME,0x0F);
+  sendCommand(CMD_SET_VOLUME,0x0F);
   sendCommand(CMD_PLAY_FILE_NAME,0X0229);
   delay(2000);
   sendCommand(CMD_PLAY_FILE_NAME,0X022A);
@@ -323,6 +442,9 @@ void colorRow(unsigned short int colorSeq, unsigned short int delayValue){
     shiftOut(DATA, CLCK, MSBFIRST, colorSeq);
     digitalWrite(LATCH,HIGH);
     delay(delayValue);
-    
+   /*if(colorSeq == RED && i==4)
+       if(buttonState == HIGH || rLight == 16) {score += 1; delay(2);}
+    }*/
   }
 }
+
