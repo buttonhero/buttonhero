@@ -1,4 +1,3 @@
-
 #include <SPI.h> 
 /* Wiring Guide */
 //Arduino UNO
@@ -15,9 +14,9 @@
 //              VCC       |   5V
 //              GND        |  GND
 //  LCD Array
-//              LATCH      |  12
-//              DATA       |  11
-//              CLOCK      |  10
+//              
+//              DATA       |  2
+//              CLOCK      |  13
 //              VCC        |  5V
 //              GND        |  GND
 //Buttons
@@ -32,14 +31,20 @@
 //              GND         | GND
  
 #include <SoftwareSerial.h>
+#include <TM1637Display.h>
+
+//4 Digit Counter
+#define CLK 13 //Set the CLK pin connection to the display
+#define DIO 2//Set the DIO pin connection to the display
+
 //All the pin definitions 
 #define ARDUINO_RX 9 //should connect to TX of the Serial MP3 Player module
 #define ARDUINO_TX 8 //connect to RX of the module
 
 //joystick pins
 #define SW_PIN A0 // digital pin connected to switch output
-#define X_PIN 1 // analog pin connected to X output
-#define Y_PIN 2 // analog pin connected to Y output
+#define X_PIN A1 // analog pin connected to X output
+#define Y_PIN A2 // analog pin connected to Y output
 
 //LED system pins
 #define LATCH 12 //Latch Pin
@@ -54,6 +59,8 @@
 #define GB A5 //green button 
 
 SoftwareSerial myMP3(ARDUINO_RX, ARDUINO_TX);
+TM1637Display display(CLK, DIO);  //set up the 4-Digit Display.
+
 
 static int8_t Send_buf[6] = {0} ;
 /************Command byte**************************/
@@ -112,9 +119,20 @@ void sendCommand(int8_t command, int16_t dat );
 #define ARRAYSIZE 8 // Number of LED sequences in the song
 #define SONGS 5 //number of songs
 //
-const unsigned short int songArray[ARRAYSIZE][2] = {{GREEN,VERYFAST},{YELLOW,VERYFAST},{RED,FAST},{YELLOW,FAST},{RED,VERYFAST},{BLUE,VERYFAST},{WHITE,VERYFAST},{GREEN,VERYFAST}};
+const unsigned short int songArray[ARRAYSIZE][2] = {{GREEN,VERYFAST},
+                                                    {YELLOW,VERYFAST},
+                                                    {RED,FAST},
+                                                    {YELLOW,FAST},
+                                                    {RED,VERYFAST},
+                                                    {BLUE,VERYFAST},
+                                                    {WHITE,VERYFAST},
+                                                    {GREEN,VERYFAST}};
+
+int score = 0;// the score. duh.
 void setup() 
 {
+  display.setBrightness(0x0a);  //set the 4digit counter to maximum brightness
+  
   //leds
   pinMode(LATCH,OUTPUT);
   pinMode(CLCK, OUTPUT);
@@ -140,20 +158,16 @@ void setup()
   Serial.begin(9600);
   
   //serial baude rating for mp3 controller
-	myMP3.begin(9600);
-	delay(500);//Wait chip initialization is complete
+  myMP3.begin(9600);
+  delay(500);//Wait chip initialization is complete
   sendCommand(CMD_SEL_DEV, DEV_TF);//select the TF card
-
   intro();
-
-    
 }
 unsigned char gameState = 1; //1 = intro 2 = game 3 = finish 0 = select
-
 unsigned char currSong = 1; //the song selected during the selection process
+
 void loop() 
 {
-  
   Serial.print("Blue Button:  ");
   Serial.print(digitalRead(BB));
   Serial.print("\n");
@@ -169,13 +183,13 @@ void loop()
     Serial.print("Yellow Button:  ");
   Serial.print(digitalRead(YB));
   Serial.print("\n");
-//this is nessary for analog devices to have enough time to read.
-//Arduino specs says it takes at least 10 milliseconds in between reads.
-//Games state 2 already says a delay built in and this delay could interfer
-//with game play. 100 milliseconds was used to makes sure there was no error.
-if(gameState != 2){
+  //this is nessary for analog devices to have enough time to read.
+  //Arduino specs says it takes at least 10 milliseconds in between reads.
+  //Games state 2 already says a delay built in and this delay could interfer
+  //with game play. 100 milliseconds was used to makes sure there was no error.
+  if(gameState != 2){
   delay(100);
-}
+  }
   switch(gameState){
     case 1: //intro
       digitalWrite(LATCH,LOW); // sets them low to help with residual bugs
@@ -290,35 +304,22 @@ if(gameState != 2){
 void intro()
 {
   
-  setVolume(0X0F); //Set volume to 15 out of 30
-  delay(200);
-  sendCommand(CMD_SET_VOLUME,0x0F); //sets it
-  sendCommand(CMD_PLAY_FILE_NAME,0X0229); // says "Welcome to Button Hero"
-  delay(2000);
-  sendCommand(CMD_PLAY_FILE_NAME,0X022A); // Plays circus music into
-  delay(200);
-  cyclePlay(0X022A); //cycles through music
-}
+   setVolume(0X0F); //Set volume to 15 out of 30
+   delay(200);
+   sendCommand(CMD_SET_VOLUME,0x0F); //sets it
+   sendCommand(CMD_PLAY_FILE_NAME,0X0229); // says "Welcome to Button Hero"
+   delay(2000);
+   sendCommand(CMD_PLAY_FILE_NAME,0X022A); // Plays circus music into
+   delay(200);
+   cyclePlay(0X022A); //cycles through music
+  }
 
-void setVolume(int8_t vol)
-{
-  mp3_5bytes(CMD_SET_VOLUME, vol);
-}
-void playWithVolume(int16_t dat)
-{
-  mp3_6bytes(CMD_PLAY_W_VOL, dat);
-}
+void setVolume(int8_t vol){mp3_5bytes(CMD_SET_VOLUME, vol);}
+void playWithVolume(int16_t dat){mp3_6bytes(CMD_PLAY_W_VOL, dat);}
 
 /*cycle play with an index*/
-void cyclePlay(int16_t index)
-{
-  mp3_6bytes(CMD_SET_PLAY_MODE,index);
-}
-
-void setCyleMode(int8_t AllSingle)
-{
-  mp3_5bytes(CMD_SET_PLAY_MODE,AllSingle);
-}
+void cyclePlay(int16_t index){mp3_6bytes(CMD_SET_PLAY_MODE,index);}
+void setCyleMode(int8_t AllSingle){mp3_5bytes(CMD_SET_PLAY_MODE,AllSingle);}
 
 
 void playCombine(int8_t song[][2], int8_t number)
@@ -333,7 +334,7 @@ void playCombine(int8_t song[][2], int8_t number)
   for(uint8_t i=0; i < number; i++)//
   {
     Send_buf[i*2+3] = song[i][0];
-	Send_buf[i*2+4] = song[i][1];
+  Send_buf[i*2+4] = song[i][1];
   }
   Send_buf[nbytes - 1] = 0xef;
   sendBytes(nbytes);
@@ -344,18 +345,18 @@ void sendCommand(int8_t command, int16_t dat = 0)
 {
   delay(20);
   if((command == CMD_PLAY_W_VOL)||(command == CMD_SET_PLAY_MODE)||(command == CMD_PLAY_COMBINE))
-  	return;
+    return;
   else if(command < 0x10) 
   {
-	mp3Basic(command);
+  mp3Basic(command);
   }
   else if(command < 0x40)
   { 
-	mp3_5bytes(command, dat);
+  mp3_5bytes(command, dat);
   }
   else if(command < 0x50)
   { 
-	mp3_6bytes(command, dat);
+  mp3_6bytes(command, dat);
   }
   else return;
  
@@ -395,6 +396,10 @@ void sendBytes(uint8_t nbytes)
     myMP3.write(Send_buf[i]) ;
   }
 }
+
+//checks and returns the state of button. HIGH is pressed, LOW if not pressed
+boolean buttonState(int8_t buttonPin){return digitalRead(buttonPin);}
+
 //lights LEDS according to row seq
 void colorRow(unsigned short int colorSeq, unsigned short int delayValue){
   for(unsigned char i = 0; i < 5; i++){
@@ -402,10 +407,42 @@ void colorRow(unsigned short int colorSeq, unsigned short int delayValue){
     shiftOut(DATA, CLCK, MSBFIRST, colorSeq); //changes to the next light in the color sequence 
     digitalWrite(LATCH,HIGH); //turns on the next light in the sequence
     delay(delayValue); //set the speed the sequence will light through
-   /*if(colorSeq == RED && i==4)
-       if(buttonState == HIGH || rLight == 16) {score += 1; delay(2);}
-    }*/
-  }
-}
+    
+    if(colorSeq == RED && i==4){
+       if(buttonState(RB) == HIGH) {
+          score++; delay(2);
+          display.showNumberDec(score); //Display the Score;
+       }//end if
+     }//end RED if
+     
+     if(colorSeq == GREEN && i==4){
+       if(buttonState(GB) == HIGH) {
+          score++; delay(2);
+          display.showNumberDec(score); //Display the Score;
+       }//end if
+     }//end GREEN if
+    
+    if(colorSeq == YELLOW && i==4){
+       if(buttonState(YB) == HIGH) {
+          score++; delay(2);
+          display.showNumberDec(score); //Display the Score;
+       }//end if
+     }//end YELLOW if
 
+     if(colorSeq == BLUE && i==4){
+       if(buttonState(BB) == HIGH) {
+          score++; delay(100);
+          display.showNumberDec(score); //Display the Score;
+       }//end if
+     }//end BLUE if
+     
+     if(colorSeq == WHITE && i==4){
+       if(buttonState(WB) == HIGH) {
+          score++; delay(100);
+          display.showNumberDec(score); //Display the Score;
+       }//end if
+     }//end WHITE if
+  }//end for
+    
+}
 
