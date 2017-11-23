@@ -21,14 +21,16 @@
 //              GND        |  GND
 //Buttons
 //  
-//              Yellow      | 3
-//              Blue        | 4
+//              Yellow      | 4
+//              Blue        | 3
 //              Red         | A3
 //              White       | A4
 //              Green       | A5
 //        ALL
 //              VCC         | 5V
 //              GND         | GND
+//4 Digit Display
+//              CLK         | 13
  
 #include <SoftwareSerial.h>
 #include <TM1637Display.h>
@@ -52,8 +54,8 @@
 #define CLCK 10  //Clock Pin
 
 //The Button pins
-#define YB 3 //yellow button
-#define BB 4 //blue button
+#define BB 3 //blue button
+#define YB 4 //yellow button
 #define RB A3 //red button
 #define WB A4 //white button
 #define GB A5 //green button 
@@ -104,19 +106,24 @@ put those hex codes as readable commands          */
 
 void sendCommand(int8_t command, int16_t dat );
 
-
-#define GREEN 1
+/*#define GREEN 1
 #define YELLOW 2
 #define BLUE 4
 #define RED 8
 #define WHITE 16
+*/
+#define GREEN 16
+#define YELLOW 8
+#define BLUE 4
+#define RED 2
+#define WHITE 1
 #define VERYSLOW 500
 #define SLOW 400
 #define MEDIUM 300
 #define FAST 200
 #define VERYFAST 100
 #define BLAZING 50
-#define ARRAYSIZE 8 // Number of LED sequences in the song
+#define ARRAYSIZE 26 // Number of LED sequences in the song
 #define SONGS 5 //number of songs
 //
 const unsigned short int songArray[ARRAYSIZE][2] = {{GREEN,VERYFAST},
@@ -126,9 +133,28 @@ const unsigned short int songArray[ARRAYSIZE][2] = {{GREEN,VERYFAST},
                                                     {RED,VERYFAST},
                                                     {BLUE,VERYFAST},
                                                     {WHITE,VERYFAST},
+                                                    {GREEN,VERYFAST},
+                                                    {WHITE,VERYFAST},
+                                                    {GREEN,VERYFAST},
+                                                    {YELLOW,VERYFAST},
+                                                    {RED,FAST},
+                                                    {RED,FAST},
+                                                    {YELLOW,VERYFAST},
+                                                    {BLUE,VERYFAST},
+                                                    {WHITE,VERYFAST},
+                                                    {GREEN,VERYFAST},
+                                                    {BLUE,VERYFAST},
+                                                    {YELLOW,VERYFAST},
+                                                    {RED,FAST},
+                                                    {YELLOW,FAST},
+                                                    {WHITE,BLAZING},
+                                                    {BLUE,BLAZING},
+                                                    {GREEN,VERYFAST},
+                                                    {WHITE,VERYFAST},
                                                     {GREEN,VERYFAST}};
 
 int score = 0;// the score. duh.
+char prevColor = 0; //get prevColor for scoring purposes
 void setup() 
 {
   display.setBrightness(0x0a);  //set the 4digit counter to maximum brightness
@@ -161,28 +187,14 @@ void setup()
   myMP3.begin(9600);
   delay(500);//Wait chip initialization is complete
   sendCommand(CMD_SEL_DEV, DEV_TF);//select the TF card
+  
   intro();
 }
 unsigned char gameState = 1; //1 = intro 2 = game 3 = finish 0 = select
 unsigned char currSong = 1; //the song selected during the selection process
-
+int lcdIntro = 1818;
 void loop() 
 {
-  Serial.print("Blue Button:  ");
-  Serial.print(digitalRead(BB));
-  Serial.print("\n");
-    Serial.print("White Button:  ");
-  Serial.print(digitalRead(WB));
-  Serial.print("\n");
-    Serial.print("Red Button:  ");
-  Serial.print(digitalRead(RB));
-  Serial.print("\n");
-    Serial.print("Green Button:  ");
-  Serial.print(digitalRead(GB));
-  Serial.print("\n");
-    Serial.print("Yellow Button:  ");
-  Serial.print(digitalRead(YB));
-  Serial.print("\n");
   //this is nessary for analog devices to have enough time to read.
   //Arduino specs says it takes at least 10 milliseconds in between reads.
   //Games state 2 already says a delay built in and this delay could interfer
@@ -195,12 +207,16 @@ void loop()
       digitalWrite(LATCH,LOW); // sets them low to help with residual bugs
       shiftOut(DATA, CLCK, MSBFIRST, B11111111);  //Turn all the lights on. This helps with troubleshooting lights
       digitalWrite(LATCH,HIGH); 
-      
+      display.showNumberDecEx(lcdIntro);
+      if(lcdIntro == 1818){lcdIntro = 8181;}
+      else {lcdIntro = 1818;}
       if(digitalRead(SW_PIN) == LOW){
         sendCommand(CMD_PLAY_FILE_NAME,0X022C); //says select a song
         delay(1500);
         sendCommand(CMD_PLAY_FILE_NAME,0X0202 + currSong); //plays song #. This should be 1 in everytime in intro 
-        delay(500);
+        delay(250);
+        display.showNumberDec(currSong);
+        delay(250);
         sendCommand(CMD_PLAY_FILE_NAME,0X0101); // plays the first song
         gameState = 0;
       
@@ -216,24 +232,38 @@ void loop()
             gameState = 2; // changes gameState to Game
             delay(2000);
             sendCommand(CMD_PLAY_FILE_NAME,0X0207); // says "5"
-            delay(500);
+            delay(300);
+            display.showNumberDec(5);
+            delay(300);
             sendCommand(CMD_PLAY_FILE_NAME,0X0206); // says "4"
-            delay(500);
+            delay(300);
+            display.showNumberDec(4);
+            delay(300);
             sendCommand(CMD_PLAY_FILE_NAME,0X0205); // says "3"
-            delay(500); 
+            delay(300);
+            display.showNumberDec(3);
+            delay(300); 
             sendCommand(CMD_PLAY_FILE_NAME,0X0204); // says "2"
-            delay(600); 
+            delay(300);
+            display.showNumberDec(2);
+            delay(300); 
             sendCommand(CMD_PLAY_FILE_NAME,0X0203); // says "1"
-            delay(500);
-            sendCommand(CMD_PLAY_FILE_NAME,0X0100 + currSong); // plays selected song       
+            delay(300);
+            display.showNumberDec(1);
+            delay(300);
+            sendCommand(CMD_PLAY_FILE_NAME,0X0100 + currSong); // plays selected song
+            delay(300);
+            display.showNumberDecEx(0);       
         }
       else if(analogRead(X_PIN) > 900 || digitalRead(SW_PIN) == HIGH){
-        
+         
         if(currSong < SONGS) //checks if it isn't the last song
         {
             currSong++;
             sendCommand(CMD_PLAY_FILE_NAME,0X0202 + currSong); //says next song number
-            delay(500);
+            delay(300);
+            display.showNumberDec(currSong);
+            delay(200);
             sendCommand(CMD_PLAY_FILE_NAME,0X0100 + currSong); //plays next song
             
         }  
@@ -241,7 +271,9 @@ void loop()
         {
           currSong = 1;
           sendCommand(CMD_PLAY_FILE_NAME,0X0202 + currSong); //plays "1"
-          delay(500);
+          delay(250);
+          display.showNumberDec(currSong);
+          delay(250);
           sendCommand(CMD_PLAY_FILE_NAME,0X0100 + currSong); // plays first song
             
         }
@@ -274,6 +306,7 @@ void loop()
       break;
       case 2: //game
         for(unsigned char i = 0; i < ARRAYSIZE; i++){
+          
           colorRow(songArray[i][0],songArray[i][1]);
           //this if statement allows you to pause and unpause the game
           if(digitalRead(SW_PIN) == LOW){
@@ -402,47 +435,75 @@ boolean buttonState(int8_t buttonPin){return digitalRead(buttonPin);}
 
 //lights LEDS according to row seq
 void colorRow(unsigned short int colorSeq, unsigned short int delayValue){
+  unsigned short int buttonPressed = 0;
+  unsigned char z = 10;
+  double seqDelay = (double)delayValue / 10;
+  delayValue = (unsigned short int)seqDelay;
+  display.showNumberDec(score,false);
   for(unsigned char i = 0; i < 5; i++){
     digitalWrite(LATCH,LOW); //turns off the leds not in the sequence from other colors
     shiftOut(DATA, CLCK, MSBFIRST, colorSeq); //changes to the next light in the color sequence 
     digitalWrite(LATCH,HIGH); //turns on the next light in the sequence
     delay(delayValue); //set the speed the sequence will light through
-    
-    if(colorSeq == RED && i==4){
-       if(buttonState(RB) == HIGH) {
-          score++; delay(2);
-          display.showNumberDec(score); //Display the Score;
-       }//end if
-     }//end RED if
-     
-     if(colorSeq == GREEN && i==4){
-       if(buttonState(GB) == HIGH) {
-          score++; delay(2);
-          display.showNumberDec(score); //Display the Score;
-       }//end if
-     }//end GREEN if
-    
-    if(colorSeq == YELLOW && i==4){
-       if(buttonState(YB) == HIGH) {
-          score++; delay(2);
-          display.showNumberDec(score); //Display the Score;
-       }//end if
-     }//end YELLOW if
+    //display.showNumberDec(score,false);
+    buttonPressed = checkButton();
+    for(z = 10; z > 0; z--){
+    if(buttonPressed != 0){
+        if(colorSeq == buttonPressed && (i == 4 || i == 5))
+        {
+          score += 5;
+          display.showNumberDec(5555,true);
+          buttonPressed = 0;
+        }
+        else if(colorSeq == buttonPressed && i == 1)
+        {
+          score += 1;
+          display.showNumberDec(1,true);
+          buttonPressed = 0;
+        }
+        else if(prevColor == buttonPressed && i ==0)
+        {
+          score += 3;
+          display.showNumberDec(3333,true);
+          buttonPressed = 0; 
+        }
+        else{
+          display.showNumberDec(-1,true);
+          if(score != 0){
+            score--;         
+           buttonPressed = 0;  
+          }
+        }
+        
+    }
+    delay(delayValue);
+    }
+    }
+    prevColor = colorSeq;
+}
 
-     if(colorSeq == BLUE && i==4){
-       if(buttonState(BB) == HIGH) {
-          score++; delay(100);
-          display.showNumberDec(score); //Display the Score;
-       }//end if
-     }//end BLUE if
-     
-     if(colorSeq == WHITE && i==4){
-       if(buttonState(WB) == HIGH) {
-          score++; delay(100);
-          display.showNumberDec(score); //Display the Score;
-       }//end if
-     }//end WHITE if
-  }//end for
-    
+unsigned short int checkButton(){
+  if(buttonState(WB) == HIGH){
+    return WHITE;
+  }
+  else if(buttonState(RB) == HIGH)
+  {
+    return RED;
+  }
+  else if(buttonState(BB) == HIGH)
+  {
+    return BLUE;
+  }
+  else if(buttonState(YB) == HIGH)
+  {
+    return YELLOW;
+  }
+  else if(buttonState(GB) == HIGH)
+  {
+    return GREEN;
+  }
+  else{
+   return 0; 
+  }
 }
 
